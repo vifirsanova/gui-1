@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grammar Trainer</title>
+<style>
+  :root{
+    --bg:#fafafa;
+    --surface:#ffffff;
+    --ink:#111111;
+    --ink-2:#6b6b6b;
+    --ink-3:#9a9a9a;
+    --line:#e8e8e8;
+    --line-2:#f1f1f1;
+    --accent:#111111;
+    --ok:#1a7f37;
+    --err:#b42318;
+    --radius:14px;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+            font-family:var(--font);font-size:14px;line-height:1.5;
+            -webkit-font-smoothing:antialiased}
+  button{font-family:inherit}
+
+  /* ---------- top bar ---------- */
+  .topbar{height:56px;display:flex;align-items:center;justify-content:space-between;
+          padding:0 28px;background:var(--surface);border-bottom:1px solid var(--line);
+          position:sticky;top:0;z-index:10}
+  .brand{font-weight:600;letter-spacing:-0.01em}
+  .brand span{color:var(--ink-3);font-weight:400;margin-left:10px}
+  .topnav{display:flex;gap:2px;background:var(--line-2);padding:3px;border-radius:10px}
+  .topnav button{border:0;background:transparent;padding:6px 14px;border-radius:8px;
+                 font-size:13px;color:var(--ink-2);cursor:pointer}
+  .topnav button.active{background:var(--surface);color:var(--ink);
+                        box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+  /* ---------- layout ---------- */
+  .shell{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;
+         max-width:1200px;margin:32px auto;padding:0 28px}
+  @media (max-width:960px){ .shell{grid-template-columns:1fr} }
+
+  .col{display:flex;flex-direction:column;gap:16px}
+
+  .card{background:var(--surface);border:1px solid var(--line);
+        border-radius:var(--radius);padding:24px}
+  .card.flush{padding:0;overflow:hidden}
+
+  .label{font-size:12px;color:var(--ink-3);letter-spacing:.02em;
+         text-transform:uppercase}
+
+  /* ---------- exercise header ---------- */
+  .ex-head{display:flex;justify-content:space-between;align-items:flex-start;
+           margin-bottom:20px}
+  .ex-title{font-size:13px;color:var(--ink-2)}
+  .ex-title b{color:var(--ink);font-weight:600}
+
+  /* ---------- difficulty ladder ---------- */
+  .ladder{display:flex;align-items:center;gap:14px}
+  .ladder .steps{display:flex;gap:3px}
+  .ladder .steps i{width:18px;height:3px;border-radius:2px;background:var(--line);
+                   display:block}
+  .ladder .steps i.on{background:var(--ink)}
+  .ladder .value{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .ladder .delta{font-size:11px;color:var(--ink-3)}
+
+  /* history strip */
+  .history{display:flex;gap:4px;margin-top:14px;align-items:flex-end;height:28px}
+  .history i{width:10px;background:var(--line);border-radius:2px 2px 0 0;
+             display:block;align-self:flex-end}
+  .history i.h1{height:8px}
+  .history i.h2{height:14px}
+  .history i.h3{height:20px}
+  .history i.h4{height:24px}
+  .history i.h5{height:28px}
+  .history i.now{background:var(--ink)}
+
+  /* ---------- task ---------- */
+  .task{font-size:20px;line-height:1.45;letter-spacing:-.01em;
+        margin:22px 0 20px;font-weight:500}
+  .task em{font-style:normal;color:var(--ink-3);
+           border-bottom:1px dashed var(--ink-3);padding:0 2px}
+
+  .options{display:flex;flex-direction:column;gap:8px}
+  .opt{display:flex;align-items:center;gap:14px;padding:14px 16px;
+       border:1px solid var(--line);border-radius:12px;cursor:pointer;
+       background:var(--surface);transition:border-color .15s, background .15s}
+  .opt:hover{border-color:#d4d4d4}
+  .opt .key{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);
+            display:grid;place-items:center;font-size:11px;color:var(--ink-2);
+            font-variant-numeric:tabular-nums;flex:none}
+  .opt.sel{border-color:var(--ink)}
+  .opt.sel .key{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .opt.ok{border-color:var(--ok);background:#f6fbf7}
+  .opt.ok .key{background:var(--ok);border-color:var(--ok);color:#fff}
+  .opt.bad{border-color:var(--err);background:#fdf7f7}
+  .opt.bad .key{background:var(--err);border-color:var(--err);color:#fff}
+  .opt .txt{font-size:15px}
+
+  .ex-foot{display:flex;justify-content:space-between;align-items:center;
+           margin-top:20px}
+  .hint{font-size:12px;color:var(--ink-3)}
+
+  .btn{border:0;border-radius:10px;padding:10px 18px;font-size:13px;
+       font-weight:500;cursor:pointer;transition:opacity .15s}
+  .btn.primary{background:var(--ink);color:#fff}
+  .btn.primary:disabled{opacity:.35;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--ink-2);border:1px solid var(--line)}
+  .btn.ghost:hover{color:var(--ink);border-color:#d4d4d4}
+
+  /* ---------- session stats (compact) ---------- */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;
+         border-top:1px solid var(--line);margin-top:20px;padding-top:18px}
+  .stat{padding-right:16px;border-right:1px solid var(--line-2)}
+  .stat:last-child{border-right:0;padding-right:0;padding-left:16px}
+  .stat:not(:first-child){padding-left:16px}
+  .stat .k{font-size:11px;color:var(--ink-3);text-transform:uppercase;
+           letter-spacing:.03em}
+  .stat .v{font-size:18px;font-weight:600;margin-top:2px;
+           font-variant-numeric:tabular-nums}
+
+  /* ---------- materials panel ---------- */
+  .mat-head{display:flex;justify-content:space-between;align-items:center;
+            padding:16px 20px;border-bottom:1px solid var(--line-2)}
+  .mat-head .label{margin:0}
+  .mat-head a{font-size:12px;color:var(--ink-2);text-decoration:none}
+  .mat-list{display:flex;flex-direction:column}
+  .mat{display:flex;align-items:center;justify-content:space-between;
+       padding:12px 20px;border-bottom:1px solid var(--line-2);cursor:pointer}
+  .mat:last-child{border-bottom:0}
+  .mat:hover{background:#fcfcfc}
+  .mat .t{font-size:13px}
+  .mat .t b{display:block;font-weight:500;margin-bottom:1px}
+  .mat .t span{color:var(--ink-3);font-size:12px}
+  .mat .badge{font-size:11px;color:var(--ink-2);border:1px solid var(--line);
+              padding:2px 8px;border-radius:999px}
+  .mat.related .badge{border-color:var(--ink);color:var(--ink)}
+  .mat .chev{color:var(--ink-3);font-size:14px}
+
+  /* ---------- assistant ---------- */
+  .asst{display:flex;flex-direction:column}
+  .asst-head{display:flex;justify-content:space-between;align-items:center;
+             padding:16px 20px;border-bottom:1px solid var(--line-2)}
+  .asst-head .status{display:flex;align-items:center;gap:8px;
+                     font-size:12px;color:var(--ink-2)}
+  .asst-head .status::before{content:"";width:6px;height:6px;border-radius:50%;
+                             background:var(--ok)}
+  .asst-head .mode{font-size:11px;color:var(--ink-3)}
+
+  .msgs{padding:18px 20px;display:flex;flex-direction:column;gap:14px;
+        height:360px;overflow-y:auto}
+  .msg{max-width:88%;font-size:13.5px;line-height:1.5}
+  .msg.bot{align-self:flex-start}
+  .msg.bot .who{font-size:11px;color:var(--ink-3);margin-bottom:4px}
+  .msg.bot .body{background:#f5f5f5;border-radius:12px 12px 12px 4px;
+                 padding:10px 12px}
+  .msg.user{align-self:flex-end;text-align:right}
+  .msg.user .body{background:var(--ink);color:#fff;border-radius:12px 12px 4px 12px;
+                  padding:10px 12px;display:inline-block;text-align:left}
+  .msg .note{font-size:11px;color:var(--ink-3);margin-top:6px}
+
+  .quick{padding:0 20px 12px;display:flex;flex-wrap:wrap;gap:6px}
+  .quick button{font-size:12px;padding:6px 12px;border-radius:999px;
+                border:1px solid var(--line);background:var(--surface);
+                color:var(--ink-2);cursor:pointer}
+  .quick button:hover{border-color:#d4d4d4;color:var(--ink)}
+  .quick button:disabled{opacity:.4;cursor:not-allowed}
+
+  .composer{display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--line-2)}
+  .composer input{flex:1;border:1px solid var(--line);border-radius:10px;
+                  padding:9px 12px;font-size:13px;font-family:inherit;
+                  background:var(--surface)}
+  .composer input:focus{outline:none;border-color:#c9c9c9}
+
+  .limit{font-size:11px;color:var(--ink-3);padding:0 20px 14px}
+
+  /* ---------- modal (materials) ---------- */
+  .modal{position:fixed;inset:0;background:rgba(17,17,17,.35);
+         display:none;align-items:center;justify-content:center;z-index:50;
+         padding:24px}
+  .modal.open{display:flex}
+  .sheet{background:var(--surface);border-radius:16px;max-width:560px;width:100%;
+         max-height:80vh;overflow:hidden;display:flex;flex-direction:column}
+  .sheet header{display:flex;justify-content:space-between;align-items:center;
+                padding:18px 22px;border-bottom:1px solid var(--line-2)}
+  .sheet header h3{margin:0;font-size:15px;font-weight:600}
+  .sheet header button{border:0;background:transparent;font-size:13px;
+                       color:var(--ink-2);cursor:pointer}
+  .sheet .body{padding:20px 22px;overflow-y:auto;font-size:13.5px;line-height:1.6}
+  .sheet .body h4{font-size:12px;text-transform:uppercase;letter-spacing:.03em;
+                  color:var(--ink-3);margin:18px 0 6px;font-weight:500}
+  .sheet .body h4:first-child{margin-top:0}
+  .sheet .formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+                  font-size:13px;background:#f5f5f5;padding:10px 12px;
+                  border-radius:8px;margin:6px 0}
+  .sheet .body ul{margin:6px 0;padding-left:18px}
+  .sheet .body li{margin:3px 0}
+  .sheet .wrong{color:var(--err);text-decoration:line-through}
+  .sheet .right{color:var(--ok);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Grammar Trainer <span>/ Present Perfect</span></div>
+  <div class="topnav">
+    <button class="active">Тренажёр</button>
+    <button>Прогресс</button>
+    <button>Материалы</button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ЛЕВАЯ КОЛОНКА -->
+  <div class="col">
+
+    <!-- Задание -->
+    <section class="card">
+      <div class="ex-head">
+        <div>
+          <div class="label">Упражнение</div>
+          <div class="ex-title"><b>3</b> из 10 · Present Perfect</div>
+        </div>
+
+        <div class="ladder">
+          <div>
+            <div class="label" style="text-align:right">Сложность</div>
+            <div class="steps" id="ladder">
+              <i class="on"></i><i class="on"></i><i></i><i></i><i></i>
+            </div>
+          </div>
+          <div class="value">2 / 5</div>
+        </div>
+      </div>
+
+      <!-- История сложности -->
+      <div>
+        <div class="label" style="margin-bottom:6px">История сложности</div>
+        <div class="history" id="history">
+          <i class="h2"></i><i class="h2"></i><i class="h3"></i>
+          <i class="h3"></i><i class="h2"></i><i class="h2 now"></i>
+        </div>
+      </div>
+
+      <div class="task">
+        She <em>___</em> (to finish) her homework already.
+      </div>
+
+      <div class="options" id="options">
+        <div class="opt" data-correct="false">
+          <span class="key">1</span><span class="txt">have finished</span>
+        </div>
+        <div class="opt" data-correct="true">
+          <span class="key">2</span><span class="txt">has finished</span>
+        </div>
+        <div class="opt" data-correct="false">
+          <span class="key">3</span><span class="txt">finished</span>
+        </div>
+      </div>
+
+      <div class="ex-foot">
+        <div class="hint">Клавиши 1–3 · Enter — проверить</div>
+        <button class="btn primary" id="check" disabled>Проверить</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="k">Правильно</div><div class="v">2</div></div>
+        <div class="stat"><div class="k">Ошибок</div><div class="v">1</div></div>
+        <div class="stat"><div class="k">До конца</div><div class="v">7</div></div>
+      </div>
+    </section>
+
+    <!-- Материалы по теме -->
+    <section class="card flush">
+      <div class="mat-head">
+        <div class="label">Материалы · Present Perfect</div>
+        <a href="#" onclick="openSheet('pp');return false;">Все темы</a>
+      </div>
+      <div class="mat-list">
+        <div class="mat related" onclick="openSheet('pp')">
+          <div class="t"><b>Краткая шпаргалка</b><span>Формула, маркеры, типичная ошибка</span></div>
+          <div class="badge">по заданию</div>
+        </div>
+        <div class="mat" onclick="openSheet('pp')">
+          <div class="t"><b>Present Perfect vs Past Simple</b><span>Разница употребления</span></div>
+          <div class="chev">›</div>
+        </div>
+        <div class="mat" onclick="openSheet('pp')">
+          <div class="t"><b>Сигнальные слова</b><span>already · yet · just · ever · never</span></div>
+          <div class="chev">›</div>
+        </div>
+        <div class="mat" onclick="openSheet('pp')">
+          <div class="t"><b>3-е лицо единственного числа</b><span>has vs have</span></div>
+          <div class="chev">›</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ПРАВАЯ КОЛОНКА: ПОМОЩНИК -->
+  <aside class="card flush asst">
+    <div class="asst-head">
+      <div>
+        <div class="label">Помощник</div>
+        <div class="status">на связи</div>
+      </div>
+      <div class="mode">только по заданию</div>
+    </div>
+
+    <div class="msgs" id="msgs">
+      <div class="msg bot">
+        <div class="who">Помощник</div>
+        <div class="body">Готов помочь с упражнением. Выбери действие ниже или задай вопрос по грамматике.</div>
+      </div>
+    </div>
+
+    <div class="quick" id="quick">
+      <button onclick="quick('Объясни правило')">Объясни правило</button>
+      <button onclick="quick('Слишком сложно')">Сложнее</button>
+      <button onclick="quick('Слишком легко')">Легче</button>
+      <button onclick="openSheet('pp')">Шпаргалка</button>
+      <button onclick="quick('Почему мой ответ неверный?')">Почему неверно</button>
+    </div>
+
+    <form class="composer" onsubmit="return sendCustom(event)">
+      <input id="input" placeholder="Вопрос по грамматике…" autocomplete="off">
+      <button class="btn ghost" type="submit">Отправить</button>
+    </form>
+    <div class="limit">Осталось сообщений в упражнении: <b id="left">5</b> из 5</div>
+  </aside>
+
+</div>
+
+<!-- Модалка материалов -->
+<div class="modal" id="modal" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet">
+    <header>
+      <h3>Present Perfect — кратко</h3>
+      <button onclick="closeSheet()">Закрыть</button>
+    </header>
+    <div class="body">
+      <h4>Формула</h4>
+      <div class="formula">have / has + V3 (past participle)</div>
+      <ul>
+        <li>I / you / we / they → <b>have</b></li>
+        <li>he / she / it → <b>has</b></li>
+      </ul>
+
+      <h4>Сигнальные слова</h4>
+      <ul>
+        <li>already, yet, just, ever, never, since, for</li>
+      </ul>
+
+      <h4>Типичная ошибка</h4>
+      <ul>
+        <li><span class="wrong">She have finished</span> → <span class="right">She has finished</span></li>
+        <li><span class="wrong">I has seen</span> → <span class="right">I have seen</span></li>
+      </ul>
+
+      <h4>Когда использовать</h4>
+      <ul>
+        <li>Результат важен сейчас: <i>She has finished her homework (так что она свободна).</i></li>
+        <li>Опыт к настоящему моменту: <i>I have never been to London.</i></li>
+      </ul>
+
+      <h4>Сравнить</h4>
+      <ul>
+        <li>Past Simple — факт в прошлом с указанием времени: <i>She finished at 5 pm.</i></li>
+        <li>Present Perfect — без указания конкретного времени: <i>She has finished.</i></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ---------- выбор ответа ---------- */
+  const opts = [...document.querySelectorAll('.opt')];
+  const checkBtn = document.getElementById('check');
+  let selected = null;
+
+  opts.forEach(o => o.addEventListener('click', () => {
+    opts.forEach(x => x.classList.remove('sel','ok','bad'));
+    selected = o;
+    o.classList.add('sel');
+    checkBtn.disabled = false;
+  }));
+
+  document.addEventListener('keydown', e => {
+    if(['1','2','3'].includes(e.key)){
+      const o = opts[+e.key - 1];
+      if(o){ o.click(); }
+    }
+    if(e.key === 'Enter' && !checkBtn.disabled){ checkBtn.click(); }
+  });
+
+  checkBtn.addEventListener('click', () => {
+    if(!selected) return;
+    const ok = selected.dataset.correct === 'true';
+    selected.classList.remove('sel');
+    selected.classList.add(ok ? 'ok' : 'bad');
+    checkBtn.disabled = true;
+    botMsg(ok
+      ? 'Верно. Present Perfect = have/has + V3; для she — has.'
+      : 'Неверно. Для she/he/it используется has, а не have. Посмотри шпаргалку по теме.');
+  });
+
+  /* ---------- чат ---------- */
+  const msgs = document.getElementById('msgs');
+  let left = 5;
+  const leftEl = document.getElementById('left');
+
+  function addMsg(role, text, note){
+    const d = document.createElement('div');
+    d.className = 'msg ' + role;
+    d.innerHTML = role === 'bot'
+      ? `<div class="who">Помощник</div><div class="body">${text}</div>${note?`<div class="note">${note}</div>`:''}`
+      : `<div class="body">${text}</div>`;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  function botMsg(t, n){ addMsg('bot', t, n); }
+
+  function spend(){
+    if(left <= 0) return false;
+    left--; leftEl.textContent = left;
+    if(left === 0){
+      document.querySelectorAll('#quick button').forEach(b => b.disabled = true);
+      botMsg('Лимит сообщений по упражнению исчерпан. Вернись к заданию — помощник снова будет доступен на следующем.');
+    }
+    return true;
+  }
+
+  function quick(text){
+    if(!spend()) return;
+    addMsg('user', text);
+    setTimeout(() => route(text), 250);
+  }
+
+  function sendCustom(e){
+    e.preventDefault();
+    const inp = document.getElementById('input');
+    const v = inp.value.trim();
+    if(!v || !spend()) return false;
+    inp.value = '';
+    addMsg('user', v);
+    setTimeout(() => route(v), 250);
+    return false;
+  }
+
+  /* демо-роутер; в реальности — классификатор интента + LLM с лимитами */
+  function route(text){
+    const t = text.toLowerCase();
+    if(t.includes('шпарг') || t.includes('правил')){
+      botMsg('Открываю краткую шпаргалку по теме задания.');
+      openSheet('pp');
+    } else if(t.includes('сложно') || t.includes('легче')){
+      botMsg('Снижаю сложность на 1. Следующее упражнение будет проще.');
+      bumpDifficulty(-1);
+    } else if(t.includes('легко') || t.includes('сложнее')){
+      botMsg('Повышаю сложность на 1. Следующее упражнение будет сложнее.');
+      bumpDifficulty(+1);
+    } else if(t.includes('неверн')){
+      botMsg('Ошибка в согласовании подлежащего и глагола: 3-е лицо ед. ч. требует has.');
+    } else {
+      botMsg('Отвечаю только по грамматике текущего задания. Вернёмся к упражнению.',
+             'сообщение не отправлено модели');
+    }
+  }
+
+  /* ---------- прогрессия сложности ---------- */
+  const ladder = [...document.querySelectorAll('#ladder i')];
+  const history = document.getElementById('history');
+  let level = 2;
+
+  function renderLadder(){
+    ladder.forEach((el, i) => el.classList.toggle('on', i < level));
+    document.querySelector('.ladder .value').textContent = level + ' / 5';
+  }
+
+  function bumpDifficulty(delta){
+    level = Math.max(1, Math.min(5, level + delta));
+    renderLadder();
+    const bar = document.createElement('i');
+    bar.className = 'h' + level + ' now';
+    [...history.children].forEach(c => c.classList.remove('now'));
+    history.appendChild(bar);
+    if(history.children.length > 12) history.removeChild(history.firstChild);
+  }
+
+  /* ---------- модалка ---------- */
+  const modal = document.getElementById('modal');
+  function openSheet(){ modal.classList.add('open'); }
+  function closeSheet(){ modal.classList.remove('open'); }
+</script>
+</body>
+</html>
